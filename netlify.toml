@@ -3,6 +3,6 @@
   command = "true"
 
 [build.environment]
-  NODE_ENV = "production"
-  SKIP_NODE_INSTALL = "true"
+  NODE_VERSION = ""
+  NPM_FLAGS = ""
 
