@@ -1,0 +1,1600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geometric Dump Sequence Generator</title>
+    <!-- Apache ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    <!-- JSZip for downloads -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- KaTeX for math rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f8f8;
+            --bg-tertiary: #f0f0f0;
+            --text-primary: #222222;
+            --text-secondary: #555555;
+            --text-muted: #888888;
+            --border-color: #dddddd;
+            --border-light: #eeeeee;
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --success: #16a34a;
+            --success-bg: #dcfce7;
+            --error: #dc2626;
+            --error-bg: #fee2e2;
+            --warning-bg: #fef3c7;
+            --code-bg: #f5f5f5;
+        }
+        
+        [data-theme="dark"] {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #242424;
+            --bg-tertiary: #2d2d2d;
+            --text-primary: #e8e8e8;
+            --text-secondary: #b0b0b0;
+            --text-muted: #777777;
+            --border-color: #3d3d3d;
+            --border-light: #333333;
+            --accent: #3b82f6;
+            --accent-hover: #60a5fa;
+            --success: #22c55e;
+            --success-bg: #14532d;
+            --error: #ef4444;
+            --error-bg: #450a0a;
+            --warning-bg: #422006;
+            --code-bg: #2d2d2d;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Courier New', Consolas, 'Liberation Mono', monospace;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            line-height: 1.5;
+            padding: 20px;
+            transition: background 0.3s, color 0.3s;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--text-primary);
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .header h1 {
+            font-size: 1.3em;
+            font-weight: 600;
+        }
+        
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .header-link {
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 0.9em;
+            cursor: pointer;
+        }
+        
+        .header-link:hover {
+            text-decoration: underline;
+        }
+        
+        .theme-toggle {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 6px 12px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.85em;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .theme-toggle:hover {
+            background: var(--border-color);
+        }
+        
+        /* Sections */
+        h2 {
+            font-size: 1.05em;
+            font-weight: 600;
+            margin: 25px 0 12px 0;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 5px;
+        }
+        
+        h3 {
+            font-size: 0.95em;
+            font-weight: 600;
+            margin: 18px 0 10px 0;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .section {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            padding: 18px;
+            margin-bottom: 18px;
+        }
+        
+        /* Parameter Grid */
+        .params-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 18px;
+        }
+        
+        .param-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .param-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85em;
+            color: var(--text-secondary);
+        }
+        
+        .param-label .unit {
+            color: var(--text-muted);
+            font-size: 0.9em;
+        }
+        
+        .help-icon {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            font-size: 11px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        
+        .help-icon:hover {
+            background: var(--border-color);
+            color: var(--text-primary);
+        }
+        
+        .help-content {
+            display: none;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            padding: 10px 12px;
+            margin-top: 6px;
+            font-size: 0.82em;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        
+        .help-content.show {
+            display: block;
+        }
+        
+        .help-content code {
+            background: var(--code-bg);
+            padding: 1px 4px;
+            font-size: 0.95em;
+        }
+        
+        .param-group input[type="number"],
+        .param-group input[type="text"] {
+            font-family: inherit;
+            font-size: 1em;
+            padding: 8px 10px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        
+        .param-group input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        
+        .param-group input::placeholder {
+            color: var(--text-muted);
+        }
+        
+        /* Advanced Toggle */
+        .advanced-toggle {
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 0.9em;
+            margin: 15px 0 10px 0;
+            user-select: none;
+        }
+        
+        .advanced-toggle:hover {
+            color: var(--text-secondary);
+        }
+        
+        .advanced-content {
+            display: none;
+            padding-top: 15px;
+            border-top: 1px dashed var(--border-color);
+            margin-top: 10px;
+        }
+        
+        .advanced-content.show {
+            display: block;
+        }
+        
+        /* Buttons */
+        .btn {
+            font-family: inherit;
+            font-size: 0.95em;
+            padding: 10px 22px;
+            border: 1px solid var(--text-primary);
+            background: var(--text-primary);
+            color: var(--bg-primary);
+            cursor: pointer;
+            margin-right: 10px;
+            margin-top: 12px;
+        }
+        
+        .btn:hover {
+            opacity: 0.85;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .btn-secondary {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        
+        /* Command Box */
+        .command-box {
+            background: var(--code-bg);
+            border: 1px solid var(--border-color);
+            padding: 12px 15px;
+            font-size: 0.88em;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        
+        .command-explanation {
+            display: none;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-top: none;
+            padding: 12px 15px;
+            font-size: 0.82em;
+            line-height: 1.8;
+        }
+        
+        .command-explanation.show {
+            display: block;
+        }
+        
+        .command-explanation .param-line {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .command-explanation .param-name {
+            color: var(--accent);
+            min-width: 80px;
+        }
+        
+        .explanation-toggle {
+            font-size: 0.8em;
+            color: var(--text-muted);
+            cursor: pointer;
+            margin-top: 5px;
+            display: inline-block;
+        }
+        
+        .explanation-toggle:hover {
+            color: var(--accent);
+        }
+        
+        /* Reality Checks */
+        .reality-checks {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 8px;
+        }
+        
+        .check-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            font-size: 0.82em;
+        }
+        
+        .check-item.pass {
+            background: var(--success-bg);
+            border: 1px solid var(--success);
+        }
+        
+        .check-item.fail {
+            background: var(--error-bg);
+            border: 1px solid var(--error);
+        }
+        
+        .check-item.pending {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+        }
+        
+        .check-icon {
+            font-weight: bold;
+            width: 18px;
+            text-align: center;
+        }
+        
+        .check-item.pass .check-icon { color: var(--success); }
+        .check-item.fail .check-icon { color: var(--error); }
+        .check-item.pending .check-icon { color: var(--text-muted); }
+        
+        /* Summary Table */
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88em;
+            margin: 12px 0;
+        }
+        
+        .summary-table th, .summary-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border: 1px solid var(--border-color);
+        }
+        
+        .summary-table th {
+            background: var(--bg-tertiary);
+            font-weight: 600;
+        }
+        
+        .summary-table .right { text-align: right; }
+        
+        .summary-table .total-row {
+            font-weight: 600;
+            background: var(--bg-tertiary);
+        }
+        
+        /* Assumptions Box */
+        .assumptions-box {
+            background: var(--warning-bg);
+            border: 1px solid var(--border-color);
+            padding: 12px 15px;
+            font-size: 0.82em;
+            margin: 12px 0;
+        }
+        
+        .assumptions-box strong {
+            display: block;
+            margin-bottom: 6px;
+        }
+        
+        /* Download Buttons */
+        .download-btns {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        
+        /* Scale Toggle */
+        .scale-toggle {
+            display: inline-flex;
+            gap: 12px;
+            font-size: 0.85em;
+            font-weight: normal;
+        }
+        
+        .scale-toggle label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+        
+        .scale-toggle input[type="radio"] {
+            cursor: pointer;
+        }
+        
+        /* Plot Container */
+        .plot-container {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            margin: 12px 0;
+            height: 320px;
+        }
+        
+        .plot-note {
+            font-size: 0.82em;
+            color: var(--text-muted);
+            margin: 8px 0;
+            padding: 8px 12px;
+            background: var(--bg-tertiary);
+            border-left: 3px solid var(--border-color);
+        }
+        
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .modal-overlay.show {
+            display: flex;
+        }
+        
+        .modal {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            width: 100%;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+        }
+        
+        .modal-header h2 {
+            margin: 0;
+            border: none;
+            padding: 0;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5em;
+            cursor: pointer;
+            color: var(--text-secondary);
+            padding: 0 5px;
+        }
+        
+        .modal-close:hover {
+            color: var(--text-primary);
+        }
+        
+        .modal-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .modal-tab {
+            padding: 12px 20px;
+            cursor: pointer;
+            background: var(--bg-tertiary);
+            border: none;
+            font-family: inherit;
+            font-size: 0.9em;
+            color: var(--text-secondary);
+        }
+        
+        .modal-tab.active {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        
+        .modal-content {
+            padding: 20px;
+        }
+        
+        .modal-content p {
+            margin-bottom: 12px;
+        }
+        
+        .modal-content ul {
+            margin: 12px 0 12px 25px;
+        }
+        
+        .modal-content li {
+            margin-bottom: 8px;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .math-block {
+            text-align: center;
+            margin: 15px 0;
+            padding: 10px;
+            background: var(--bg-tertiary);
+            overflow-x: auto;
+        }
+        
+        /* Inline param */
+        .inline-param {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-right: 20px;
+            margin-bottom: 10px;
+        }
+        
+        .inline-param input {
+            width: 120px;
+            font-family: inherit;
+            padding: 6px 10px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>Geometric Dump Sequence Generator</h1>
+            <div class="header-actions">
+                <span class="header-link" onclick="openModal()">Why Geometric Dumping?</span>
+                <button class="theme-toggle" onclick="toggleTheme()">
+                    <span id="theme-icon">&#9790;</span>
+                    <span id="theme-text">Dark</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Required Parameters -->
+        <div class="section">
+            <h2>Required Parameters</h2>
+            <div class="params-grid">
+                <div class="param-group">
+                    <div class="param-label">
+                        timestep (dt) <span class="unit">[LJ]</span>
+                        <span class="help-icon" onclick="toggleHelp(this)">?</span>
+                    </div>
+                    <input type="number" id="dt" value="0.001" step="0.0001" min="0.0001">
+                    <div class="help-content">
+                        The simulation timestep in LJ (Lennard-Jones) time units. This is the fundamental time resolution of your molecular dynamics simulation. Typical values range from 0.001 to 0.005 LJ.
+                    </div>
+                </div>
+                <div class="param-group">
+                    <div class="param-label">
+                        tau_equil <span class="unit">[LJ]</span>
+                        <span class="help-icon" onclick="toggleHelp(this)">?</span>
+                    </div>
+                    <input type="number" id="tau_equil" value="200" step="1" min="1">
+                    <div class="help-content">
+                        The equilibration time - the duration of the long sequence during which the system equilibrates. The long sequence will target ending near this time. Typically 10-100x tau_alpha depending on how deeply you want to age the system.
+                    </div>
+                </div>
+                <div class="param-group">
+                    <div class="param-label">
+                        tau_alpha <span class="unit">[LJ]</span>
+                        <span class="help-icon" onclick="toggleHelp(this)">?</span>
+                    </div>
+                    <input type="number" id="tau_alpha" value="10" step="0.1" min="0.1">
+                    <div class="help-content">
+                        The alpha relaxation time - the characteristic timescale for structural relaxation in glassy systems. This is typically measured from the decay of self-intermediate scattering functions or mean-squared displacement. Used to set the geometric ratio and short sequence length.
+                    </div>
+                </div>
+                <div class="param-group">
+                    <div class="param-label">
+                        total_time_long_sequence <span class="unit">[LJ]</span>
+                        <span class="help-icon" onclick="toggleHelp(this)">?</span>
+                    </div>
+                    <input type="text" id="total_time_long" value="" placeholder="tau_equil">
+                    <div class="help-content">
+                        Target end time for the long sequence. Defaults to <code>tau_equil</code>. The optimal number of terms (n) is auto-selected to get the final dump as close to this value as possible. You can use expressions like <code>0.5*tau_equil</code> or <code>20*tau_alpha</code>.
+                    </div>
+                </div>
+                <div class="param-group">
+                    <div class="param-label">
+                        total_time_short_sequence <span class="unit">[LJ]</span>
+                        <span class="help-icon" onclick="toggleHelp(this)">?</span>
+                    </div>
+                    <input type="text" id="total_time_short" value="" placeholder="100*tau_alpha">
+                    <div class="help-content">
+                        Total duration of all short sequences combined. Defaults to <code>100*tau_alpha</code>. This determines how long after equilibration you continue recording. Divided by the short sequence length to get the number of repeats.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Advanced Settings -->
+            <div class="advanced-toggle" onclick="toggleAdvanced()">
+                <span id="advanced-icon">[+]</span> Advanced Settings (not recommended to change)
+            </div>
+            <div class="advanced-content" id="advanced-content">
+                <div class="params-grid">
+                    <div class="param-group">
+                        <div class="param-label">
+                            dumps_per_short_sequence
+                            <span class="help-icon" onclick="toggleHelp(this)">?</span>
+                        </div>
+                        <input type="number" id="dumps_per_short" value="27" step="1" min="5">
+                        <div class="help-content">
+                            Target number of dumps per short sequence. Due to rounding (floor function), the actual number may be slightly less. Default of 27 typically yields ~25 actual dumps. Higher values give finer time resolution but more data.
+                        </div>
+                    </div>
+                    <div class="param-group">
+                        <div class="param-label">
+                            length_of_short_sequence <span class="unit">[LJ]</span>
+                            <span class="help-icon" onclick="toggleHelp(this)">?</span>
+                        </div>
+                        <input type="text" id="length_short" value="" placeholder="0.90*tau_alpha">
+                        <div class="help-content">
+                            Duration of each individual short sequence. Defaults to <code>0.90*tau_alpha</code>. Set to less than tau_alpha so that tau_alpha falls within a region of high dump density (not at the sparse end of a sequence). This ensures accurate measurement of dynamics at tau_alpha.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="btn" onclick="generate()">Generate Sequences</button>
+            <button class="btn btn-secondary" onclick="resetParams()">Reset to Defaults</button>
+        </div>
+        
+        <!-- Generated Commands -->
+        <div class="section" id="commands-section">
+            <h2>Generated Commands</h2>
+            
+            <h3>Long Sequence Command</h3>
+            <div class="command-box" id="long-command">--</div>
+            <span class="explanation-toggle" onclick="toggleExplanation('long-explanation')">[Show explanation]</span>
+            <div class="command-explanation" id="long-explanation"></div>
+            
+            <h3>Short Sequence Command</h3>
+            <div class="command-box" id="short-command">--</div>
+            <span class="explanation-toggle" onclick="toggleExplanation('short-explanation')">[Show explanation]</span>
+            <div class="command-explanation" id="short-explanation"></div>
+        </div>
+        
+        <!-- Reality Checks -->
+        <div class="section" id="checks-section">
+            <h2>Reality Checks</h2>
+            <div class="reality-checks" id="reality-checks">
+                <div class="check-item pending"><span class="check-icon">-</span> Long sequence first filename index == 1</div>
+                <div class="check-item pending"><span class="check-icon">-</span> Long sequence first dump_time == 1</div>
+                <div class="check-item pending"><span class="check-icon">-</span> Long sequence first run_time == 1</div>
+                <div class="check-item pending"><span class="check-icon">-</span> Short sequence first dump_time == long_last + 1</div>
+                <div class="check-item pending"><span class="check-icon">-</span> Short sequence first filename == long_count + 1</div>
+                <div class="check-item pending"><span class="check-icon">-</span> Short sequence last dump >= target</div>
+            </div>
+        </div>
+        
+        <!-- Summary & Downloads -->
+        <div class="section" id="summary-section">
+            <h2>Summary &amp; Downloads</h2>
+            
+            <h3>File Size Estimation</h3>
+            <div class="inline-param">
+                <label>Number of particles:</label>
+                <input type="number" id="num_particles" value="100000" step="1000" min="1" onchange="updateFileSizes(); saveParams();">
+                <span class="help-icon" onclick="toggleHelp(this)">?</span>
+            </div>
+            <div class="help-content" id="particles-help" style="max-width: 400px;">
+                Total number of particles/atoms in your simulation. Used to estimate file sizes based on DCD trajectory format.
+            </div>
+            
+            <div class="assumptions-box">
+                <strong>Assumptions:</strong>
+                <ul style="margin-left: 20px; margin-top: 5px;">
+                    <li>DCD trajectory format: 12 bytes per particle per frame (3 floats x 4 bytes for x, y, z)</li>
+                    <li>~100 bytes header overhead per frame</li>
+                    <li>Formula: size = (12 * particles + 100) * frames</li>
+                </ul>
+            </div>
+            
+            <table class="summary-table">
+                <tr>
+                    <th>Sequence</th>
+                    <th class="right">Dumps</th>
+                    <th class="right">Timestep Range</th>
+                    <th class="right">Time Range (LJ)</th>
+                    <th class="right">Est. File Size</th>
+                </tr>
+                <tr>
+                    <td>Long (Equilibration)</td>
+                    <td class="right" id="long-dumps">--</td>
+                    <td class="right" id="long-range-ts">--</td>
+                    <td class="right" id="long-range-lj">--</td>
+                    <td class="right" id="long-size">--</td>
+                </tr>
+                <tr>
+                    <td>Short (Production)</td>
+                    <td class="right" id="short-dumps">--</td>
+                    <td class="right" id="short-range-ts">--</td>
+                    <td class="right" id="short-range-lj">--</td>
+                    <td class="right" id="short-size">--</td>
+                </tr>
+                <tr class="total-row">
+                    <td>Total</td>
+                    <td class="right" id="total-dumps">--</td>
+                    <td></td>
+                    <td></td>
+                    <td class="right" id="total-size">--</td>
+                </tr>
+            </table>
+            
+            <div class="download-btns">
+                <button class="btn" id="btn-individual" onclick="downloadIndividual()" disabled>Download Individual Files (ZIP)</button>
+                <button class="btn" id="btn-stitched" onclick="downloadStitched()" disabled>Download Stitched Files (ZIP)</button>
+            </div>
+        </div>
+        
+        <!-- Visualization -->
+        <div class="section" id="viz-section">
+            <h2>Visualization</h2>
+            
+            <h3>
+                Dump Times
+                <span class="scale-toggle">
+                    <label><input type="radio" name="dump-scale" value="linear" checked onchange="updateDumpPlot()"> Linear</label>
+                    <label><input type="radio" name="dump-scale" value="log" onchange="updateDumpPlot()"> Log</label>
+                </span>
+            </h3>
+            <div class="plot-note" id="dump-note">On log scale, geometrically spaced points appear linearly spaced.</div>
+            <div class="plot-container" id="plot-dump"></div>
+            
+            <h3>Run Times (Intervals)</h3>
+            <div class="plot-container" id="plot-run"></div>
+            
+            <h3>
+                First Two Short Sequences
+                <span class="scale-toggle">
+                    <label><input type="radio" name="short-scale" value="linear" checked onchange="updateShortPlot()"> Linear</label>
+                    <label><input type="radio" name="short-scale" value="log" onchange="updateShortPlot()"> Log</label>
+                </span>
+            </h3>
+            <div class="plot-note">tau_alpha = <span id="tau-display">--</span> LJ marked in green. Each short sequence: <span id="seq-info">--</span> dumps.</div>
+            <div class="plot-container" id="plot-short"></div>
+        </div>
+        
+        <footer style="text-align: center; padding: 30px 0 10px; color: var(--text-muted); font-size: 0.85em;">
+            Made by Collin, Max, and Claude
+        </footer>
+    </div>
+    
+    <!-- Educational Modal -->
+    <div class="modal-overlay" id="modal-overlay" onclick="closeModalOnOverlay(event)">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Why Geometric Dumping?</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-tabs">
+                <button class="modal-tab active" onclick="switchTab('basic')">Basic Overview</button>
+                <button class="modal-tab" onclick="switchTab('technical')">Technical Explanation</button>
+            </div>
+            <div class="modal-content">
+                <div class="tab-content active" id="tab-basic">
+                    <p><strong>The Problem:</strong> Glassy systems "age" - their properties continue to change long after initial equilibration. To understand this aging, we need to capture dynamics across many orders of magnitude in time.</p>
+                    
+                    <p><strong>Why not linear dumping?</strong></p>
+                    <ul>
+                        <li>Linear (evenly-spaced) dumps waste storage - you get many redundant snapshots at short times where nothing changes</li>
+                        <li>To capture long-time dynamics, you'd need an impractical number of dumps</li>
+                        <li>Example: To capture 6 decades of time (10<sup>0</sup> to 10<sup>6</sup>) with dt=0.001, linear dumping would need 10<sup>9</sup> frames!</li>
+                    </ul>
+                    
+                    <p><strong>The Geometric Solution:</strong></p>
+                    <ul>
+                        <li>Space dumps geometrically: t<sub>n</sub> = t<sub>0</sub> * r<sup>n</sup></li>
+                        <li>This gives uniform coverage on a logarithmic time axis</li>
+                        <li>Captures fast dynamics at short times AND slow dynamics at long times</li>
+                        <li>Only ~100-500 dumps needed to span 6+ decades</li>
+                    </ul>
+                    
+                    <p><strong>The Two-Sequence Approach:</strong></p>
+                    <ul>
+                        <li><strong>Long sequence:</strong> Captures equilibration/aging during the "waiting time" - because the system ages, we need to record this period if we're interested in studying it</li>
+                        <li><strong>Short sequences (repeated):</strong> Run after equilibration when the system is quasi-stationary and negligibly affected by aging. This enables two-time correlation measurements (autocorrelation functions) where time-translation invariance (TTI) is preserved</li>
+                        <li>Geometric spacing within each short sequence efficiently captures both short and long lag times for TTI-preserving measurements</li>
+                    </ul>
+                </div>
+                
+                <div class="tab-content" id="tab-technical">
+                    <p><strong>Time-Translation Invariance and Aging:</strong></p>
+                    
+                    <p>In equilibrium systems, correlation functions depend only on the time difference:</p>
+                    <div class="math-block">$$C(t_1, t_2) = C(t_2 - t_1) = C(\tau)$$</div>
+                    
+                    <p>This is <em>time-translation invariance</em> (TTI). However, in aging glassy systems, TTI is broken. Correlation functions depend on both the waiting time $t_w$ (time since quench) and the observation interval $\tau$:</p>
+                    <div class="math-block">$$C(t_w, t_w + \tau) \neq C(\tau)$$</div>
+                    
+                    <p><strong>Two-Time Quantities:</strong></p>
+                    <p>The self-intermediate scattering function in aging systems:</p>
+                    <div class="math-block">$$F_s(q, t_w, t_w + \tau) = \frac{1}{N}\left\langle \sum_{j=1}^{N} e^{i\mathbf{q} \cdot [\mathbf{r}_j(t_w + \tau) - \mathbf{r}_j(t_w)]} \right\rangle$$</div>
+                    
+                    <p>The relaxation time $\tau_\alpha(t_w)$ grows with waiting time, often following:</p>
+                    <div class="math-block">$$\tau_\alpha(t_w) \sim t_w^\mu$$</div>
+                    <p>where $\mu$ is the aging exponent (typically 0 &lt; $\mu$ &lt; 1 for sub-aging).</p>
+                    
+                    <p><strong>Why Geometric Spacing:</strong></p>
+                    <p>Geometric dumping places snapshots at times:</p>
+                    <div class="math-block">$$t_n = t_0 \cdot r^n \quad \Rightarrow \quad \log(t_n) = \log(t_0) + n\log(r)$$</div>
+                    
+                    <p>This gives <em>uniform spacing on a logarithmic axis</em>, which is optimal because:</p>
+                    <ul>
+                        <li>Relaxation processes span many decades in time</li>
+                        <li>The "interesting" dynamics are spread uniformly in $\log(t)$</li>
+                        <li>The ratio $r$ controls the time resolution (smaller $r$ = finer resolution)</li>
+                    </ul>
+                    
+                    <p><strong>The Repeated Short Sequence Strategy:</strong></p>
+                    <p>Short sequences are run <em>after</em> the system has equilibrated and is quasi-stationary. In this regime, aging effects are negligible and TTI approximately holds, allowing standard autocorrelation function analysis:</p>
+                    <div class="math-block">$$C(\tau) = \langle A(t) A(t + \tau) \rangle$$</div>
+                    <p>Each short sequence samples the lag time $\tau$ axis efficiently via geometric spacing. The start time of each sequence represents the system's "age," but since measurements occur in the quasi-stationary regime, TTI is preserved within each sequence. This approach is standard for studying equilibrated glassy systems.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // ============================================================
+        // STORAGE & STATE
+        // ============================================================
+        const STORAGE_KEY = 'geom-dump-params-v4';
+        let longResult = null;
+        let shortResult = null;
+        let dumpChart = null;
+        let runChart = null;
+        let shortChart = null;
+        
+        const defaults = {
+            dt: 0.001,
+            tau_equil: 200,
+            tau_alpha: 10,
+            total_time_long: '',
+            total_time_short: '',
+            dumps_per_short: 27,
+            length_short: '',
+            num_particles: 100000,
+            theme: 'light'
+        };
+        
+        // ============================================================
+        // THEME
+        // ============================================================
+        
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme') || 'light';
+            const next = current === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', next);
+            updateThemeUI(next);
+            localStorage.setItem('theme', next);
+            updateChartsTheme();
+        }
+        
+        function updateThemeUI(theme) {
+            document.getElementById('theme-icon').innerHTML = theme === 'dark' ? '&#9788;' : '&#9790;';
+            document.getElementById('theme-text').textContent = theme === 'dark' ? 'Light' : 'Dark';
+        }
+        
+        function loadTheme() {
+            const saved = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', saved);
+            updateThemeUI(saved);
+        }
+        
+        // ============================================================
+        // EXPRESSION EVALUATOR
+        // ============================================================
+        
+        function evaluateExpression(expr, tau_alpha, tau_equil) {
+            if (expr === null || expr === undefined || expr === '') return NaN;
+            
+            const numVal = parseFloat(expr);
+            if (!isNaN(numVal) && expr.toString().trim() === numVal.toString()) return numVal;
+            
+            let cleanExpr = expr.toString().trim().toLowerCase();
+            cleanExpr = cleanExpr.replace(/tau_alpha/gi, '(' + tau_alpha + ')');
+            cleanExpr = cleanExpr.replace(/tau_equil/gi, '(' + tau_equil + ')');
+            
+            if (!/^[\d\s\.\+\-\*\/\(\)]+$/.test(cleanExpr)) return NaN;
+            
+            try {
+                const result = Function('"use strict"; return (' + cleanExpr + ')')();
+                return typeof result === 'number' && isFinite(result) ? result : NaN;
+            } catch (e) {
+                return NaN;
+            }
+        }
+        
+        // ============================================================
+        // PARAMS PERSISTENCE
+        // ============================================================
+        
+        function saveParams() {
+            const params = {
+                dt: parseFloat(document.getElementById('dt').value) || defaults.dt,
+                tau_equil: parseFloat(document.getElementById('tau_equil').value) || defaults.tau_equil,
+                tau_alpha: parseFloat(document.getElementById('tau_alpha').value) || defaults.tau_alpha,
+                total_time_long: document.getElementById('total_time_long').value.trim(),
+                total_time_short: document.getElementById('total_time_short').value.trim(),
+                dumps_per_short: parseInt(document.getElementById('dumps_per_short').value) || defaults.dumps_per_short,
+                length_short: document.getElementById('length_short').value.trim(),
+                num_particles: parseInt(document.getElementById('num_particles').value) || defaults.num_particles
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(params));
+        }
+        
+        function loadParams() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            const params = saved ? JSON.parse(saved) : defaults;
+            document.getElementById('dt').value = params.dt !== undefined ? params.dt : defaults.dt;
+            document.getElementById('tau_equil').value = params.tau_equil !== undefined ? params.tau_equil : defaults.tau_equil;
+            document.getElementById('tau_alpha').value = params.tau_alpha !== undefined ? params.tau_alpha : defaults.tau_alpha;
+            document.getElementById('total_time_long').value = params.total_time_long || '';
+            document.getElementById('total_time_short').value = params.total_time_short || '';
+            document.getElementById('dumps_per_short').value = params.dumps_per_short !== undefined ? params.dumps_per_short : defaults.dumps_per_short;
+            document.getElementById('length_short').value = params.length_short || '';
+            document.getElementById('num_particles').value = params.num_particles !== undefined ? params.num_particles : defaults.num_particles;
+        }
+        
+        function resetParams() {
+            localStorage.removeItem(STORAGE_KEY);
+            loadParams();
+        }
+        
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('change', saveParams);
+        });
+        
+        // ============================================================
+        // UI HELPERS
+        // ============================================================
+        
+        function toggleHelp(icon) {
+            const helpContent = icon.closest('.param-group, .inline-param').querySelector('.help-content') || 
+                               document.getElementById('particles-help');
+            if (helpContent) {
+                helpContent.classList.toggle('show');
+            }
+        }
+        
+        function toggleAdvanced() {
+            const content = document.getElementById('advanced-content');
+            const icon = document.getElementById('advanced-icon');
+            if (content.classList.contains('show')) {
+                content.classList.remove('show');
+                icon.textContent = '[+]';
+            } else {
+                content.classList.add('show');
+                icon.textContent = '[-]';
+            }
+        }
+        
+        function toggleExplanation(id) {
+            const el = document.getElementById(id);
+            el.classList.toggle('show');
+        }
+        
+        // Modal
+        function openModal() {
+            document.getElementById('modal-overlay').classList.add('show');
+            renderMath();
+        }
+        
+        function closeModal() {
+            document.getElementById('modal-overlay').classList.remove('show');
+        }
+        
+        function closeModalOnOverlay(e) {
+            if (e.target === document.getElementById('modal-overlay')) {
+                closeModal();
+            }
+        }
+        
+        function switchTab(tabName) {
+            document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelector(`.modal-tab[onclick="switchTab('${tabName}')"]`).classList.add('active');
+            document.getElementById('tab-' + tabName).classList.add('active');
+            renderMath();
+        }
+        
+        function renderMath() {
+            if (typeof renderMathInElement !== 'undefined') {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false}
+                    ]
+                });
+            }
+        }
+        
+        // ============================================================
+        // SEQUENCE GENERATION ALGORITHMS
+        // ============================================================
+        
+        function generateLongSequence(a_lj, t_lj, n_goal, dt, c_start, m_start) {
+            let t_start = (a_lj / dt) < 1 ? 1 : Math.round(a_lj / dt);
+            const timespan = t_lj / dt;
+            const r = Math.pow(timespan / t_start, 1 / (n_goal - 1));
+            const n_loop = n_goal - 1;
+            
+            let tally = 0, meta_tally = m_start, term_counter = c_start;
+            const results = { dump_times: [], run_times: [], file_names: [] };
+            
+            for (let counter = 0; counter <= n_loop; counter++) {
+                const runtime = Math.floor(t_start * Math.pow(r, counter));
+                const timestep = runtime + tally;
+                if (runtime > 0) {
+                    tally += runtime;
+                    term_counter++;
+                    results.dump_times.push(meta_tally + timestep);
+                    results.run_times.push(runtime);
+                    results.file_names.push('short' + term_counter + '.dcd');
+                }
+            }
+            return results;
+        }
+        
+        function generateShortSequence(a_lj, t_lj, n_goal, dt, c_start, m_start, repeats) {
+            let t_start = (a_lj / dt) < 1 ? 1 : Math.round(a_lj / dt);
+            const timespan = t_lj / dt;
+            const r = Math.pow(timespan / t_start, 1 / (n_goal - 1));
+            const n_loop = n_goal - 1;
+            
+            let meta_tally = m_start, term_counter = c_start;
+            const results = { dump_times: [], run_times: [], file_names: [] };
+            
+            for (let rep = 0; rep < repeats; rep++) {
+                let tally = 0, timestep = 0;
+                for (let counter = 0; counter <= n_loop; counter++) {
+                    timestep = Math.floor(t_start * Math.pow(r, counter));
+                    const runtime = timestep - tally;
+                    if (runtime > 0) {
+                        tally += runtime;
+                        term_counter++;
+                        results.dump_times.push(meta_tally + timestep);
+                        results.run_times.push(runtime);
+                        results.file_names.push('short' + term_counter + '.dcd');
+                    }
+                }
+                meta_tally += timestep;
+            }
+            return results;
+        }
+        
+        function findOptimalN(tau_alpha, tau_equil, dt) {
+            const target = tau_equil / dt;
+            const t_lj = tau_alpha / 2;
+            const candidates = [150, 200, 250, 300, 350, 400, 450, 500];
+            
+            let bestN = candidates[0], bestDiff = Infinity;
+            for (const n of candidates) {
+                const result = generateLongSequence(0, t_lj, n, dt, 0, 0);
+                if (result.dump_times.length === 0) continue;
+                const lastDump = result.dump_times[result.dump_times.length - 1];
+                const diff = Math.abs(lastDump - target);
+                if (diff < bestDiff) {
+                    bestDiff = diff;
+                    bestN = n;
+                }
+            }
+            return bestN;
+        }
+        
+        // ============================================================
+        // MAIN GENERATE
+        // ============================================================
+        
+        function generate() {
+            saveParams();
+            
+            const dt = parseFloat(document.getElementById('dt').value);
+            const tau_equil = parseFloat(document.getElementById('tau_equil').value);
+            const tau_alpha = parseFloat(document.getElementById('tau_alpha').value);
+            
+            if (isNaN(dt) || dt <= 0 || isNaN(tau_equil) || tau_equil <= 0 || isNaN(tau_alpha) || tau_alpha <= 0) {
+                alert('Please enter valid values for dt, tau_equil, and tau_alpha');
+                return;
+            }
+            
+            let total_time_long = evaluateExpression(document.getElementById('total_time_long').value, tau_alpha, tau_equil);
+            if (isNaN(total_time_long) || total_time_long <= 0) total_time_long = tau_equil;
+            
+            let total_time_short = evaluateExpression(document.getElementById('total_time_short').value, tau_alpha, tau_equil);
+            if (isNaN(total_time_short) || total_time_short <= 0) total_time_short = 100 * tau_alpha;
+            
+            const dumps_per_short = parseInt(document.getElementById('dumps_per_short').value) || 27;
+            
+            let length_short = evaluateExpression(document.getElementById('length_short').value, tau_alpha, tau_equil);
+            if (isNaN(length_short) || length_short <= 0) length_short = 0.90 * tau_alpha;
+            
+            // Find optimal n
+            const optimal_n = findOptimalN(tau_alpha, total_time_long, dt);
+            
+            // Long sequence params
+            const long_a = 0;
+            const long_t = tau_alpha / 2;
+            const long_n = optimal_n;
+            const long_c = 0;
+            const long_m = 0;
+            const long_r = 1;
+            
+            longResult = generateLongSequence(long_a, long_t, long_n, dt, long_c, long_m);
+            
+            // Short sequence params
+            const long_last_dump = longResult.dump_times[longResult.dump_times.length - 1];
+            const long_count = longResult.dump_times.length;
+            
+            const short_a = dt;
+            const short_t = length_short;
+            const short_n = dumps_per_short;
+            const short_c = long_count;
+            const short_m = long_last_dump;
+            const short_r = Math.round(total_time_short / length_short);
+            
+            shortResult = generateShortSequence(short_a, short_t, short_n, dt, short_c, short_m, short_r);
+            
+            // Update commands
+            document.getElementById('long-command').textContent = 
+                `python geo-rev11.py -a ${long_a} -t ${long_t} -n ${long_n} -d ${dt} -c ${long_c} --small -r ${long_r} -m ${long_m}`;
+            document.getElementById('short-command').textContent = 
+                `python geo-rev11.py -a ${short_a} -t ${short_t} -n ${short_n} -d ${dt} -c ${short_c} --small --old -r ${short_r} -m ${short_m}`;
+            
+            // Update explanations
+            document.getElementById('long-explanation').innerHTML = `
+                <div class="param-line"><span class="param-name">-a ${long_a}</span> First runtime step = 0 LJ (becomes 1 timestep minimum)</div>
+                <div class="param-line"><span class="param-name">-t ${long_t}</span> tau_alpha/2 = ${tau_alpha}/2 = ${long_t} LJ (controls geometric ratio)</div>
+                <div class="param-line"><span class="param-name">-n ${long_n}</span> Auto-selected to get final dump closest to ${total_time_long} LJ</div>
+                <div class="param-line"><span class="param-name">-d ${dt}</span> Simulation timestep</div>
+                <div class="param-line"><span class="param-name">-c ${long_c}</span> File counter starts at 0 (first file = short1.dcd)</div>
+                <div class="param-line"><span class="param-name">--small</span> Simple geometric series mode</div>
+                <div class="param-line"><span class="param-name">-r ${long_r}</span> Single sequence (no repeats)</div>
+                <div class="param-line"><span class="param-name">-m ${long_m}</span> Start at timestep 0</div>
+            `;
+            document.getElementById('short-explanation').innerHTML = `
+                <div class="param-line"><span class="param-name">-a ${short_a}</span> First runtime = ${short_a} LJ = 1 timestep</div>
+                <div class="param-line"><span class="param-name">-t ${short_t}</span> Short sequence duration = ${short_t.toFixed(2)} LJ</div>
+                <div class="param-line"><span class="param-name">-n ${short_n}</span> Target dumps per sequence</div>
+                <div class="param-line"><span class="param-name">-d ${dt}</span> Simulation timestep</div>
+                <div class="param-line"><span class="param-name">-c ${short_c}</span> Continue from long sequence (index ${long_count})</div>
+                <div class="param-line"><span class="param-name">--small --old</span> Geometric series with cumulative time mode</div>
+                <div class="param-line"><span class="param-name">-r ${short_r}</span> Repeat ${short_r}x = ${total_time_short} / ${short_t.toFixed(2)} LJ</div>
+                <div class="param-line"><span class="param-name">-m ${short_m}</span> Start at timestep ${long_last_dump} (end of long seq)</div>
+            `;
+            
+            runRealityChecks(dt, tau_equil, total_time_short);
+            updateSummary(dt);
+            
+            document.getElementById('btn-individual').disabled = false;
+            document.getElementById('btn-stitched').disabled = false;
+            
+            updateDumpPlot();
+            updateRunPlot();
+            updateShortPlot();
+            
+            document.getElementById('tau-display').textContent = tau_alpha;
+        }
+        
+        // ============================================================
+        // REALITY CHECKS
+        // ============================================================
+        
+        function runRealityChecks(dt, tau_equil, total_time_short) {
+            const checks = [
+                { name: 'Long sequence first filename index == 1', pass: longResult.file_names[0] === 'short1.dcd' },
+                { name: 'Long sequence first dump_time == 1', pass: longResult.dump_times[0] === 1 },
+                { name: 'Long sequence first run_time == 1', pass: longResult.run_times[0] === 1 },
+                { name: 'Short sequence first dump_time == long_last + 1', 
+                  pass: shortResult.dump_times[0] === longResult.dump_times[longResult.dump_times.length - 1] + 1 },
+                { name: 'Short sequence first filename == long_count + 1', 
+                  pass: shortResult.file_names[0] === 'short' + (longResult.dump_times.length + 1) + '.dcd' },
+                { name: 'Short sequence last dump >= target', 
+                  pass: shortResult.dump_times[shortResult.dump_times.length - 1] >= (tau_equil + total_time_short) / dt }
+            ];
+            
+            const container = document.getElementById('reality-checks');
+            container.innerHTML = '';
+            checks.forEach(c => {
+                const div = document.createElement('div');
+                div.className = 'check-item ' + (c.pass ? 'pass' : 'fail');
+                div.innerHTML = `<span class="check-icon">${c.pass ? '✓' : '✗'}</span> ${c.name}`;
+                container.appendChild(div);
+            });
+        }
+        
+        // ============================================================
+        // SUMMARY & FILE SIZE
+        // ============================================================
+        
+        function formatNum(n) { return n.toLocaleString(); }
+        
+        function formatSize(gb) {
+            if (gb < 0.001) return (gb * 1024).toFixed(2) + ' MB';
+            if (gb < 1) return gb.toFixed(3) + ' GB';
+            return gb.toFixed(2) + ' GB';
+        }
+        
+        function updateSummary(dt) {
+            if (!longResult || !shortResult) return;
+            
+            document.getElementById('long-dumps').textContent = formatNum(longResult.dump_times.length);
+            document.getElementById('long-range-ts').textContent = formatNum(longResult.dump_times[0]) + ' - ' + formatNum(longResult.dump_times[longResult.dump_times.length - 1]);
+            document.getElementById('long-range-lj').textContent = (longResult.dump_times[0] * dt).toFixed(4) + ' - ' + (longResult.dump_times[longResult.dump_times.length - 1] * dt).toFixed(2);
+            
+            document.getElementById('short-dumps').textContent = formatNum(shortResult.dump_times.length);
+            document.getElementById('short-range-ts').textContent = formatNum(shortResult.dump_times[0]) + ' - ' + formatNum(shortResult.dump_times[shortResult.dump_times.length - 1]);
+            document.getElementById('short-range-lj').textContent = (shortResult.dump_times[0] * dt).toFixed(2) + ' - ' + (shortResult.dump_times[shortResult.dump_times.length - 1] * dt).toFixed(2);
+            
+            document.getElementById('total-dumps').textContent = formatNum(longResult.dump_times.length + shortResult.dump_times.length);
+            
+            updateFileSizes();
+        }
+        
+        function updateFileSizes() {
+            if (!longResult || !shortResult) return;
+            
+            const numParticles = parseInt(document.getElementById('num_particles').value) || 100000;
+            const bytesPerFrame = 12 * numParticles + 100;
+            
+            const longSizeGB = (bytesPerFrame * longResult.dump_times.length) / (1024 ** 3);
+            const shortSizeGB = (bytesPerFrame * shortResult.dump_times.length) / (1024 ** 3);
+            
+            document.getElementById('long-size').textContent = formatSize(longSizeGB);
+            document.getElementById('short-size').textContent = formatSize(shortSizeGB);
+            document.getElementById('total-size').textContent = formatSize(longSizeGB + shortSizeGB);
+        }
+        
+        // ============================================================
+        // DOWNLOADS
+        // ============================================================
+        
+        function downloadIndividual() {
+            if (!longResult || !shortResult) return;
+            const zip = new JSZip();
+            
+            const longFolder = zip.folder('geom-output/long-sequence');
+            longFolder.file('dump_times.txt', longResult.dump_times.join('\n') + '\n');
+            longFolder.file('run_times.txt', longResult.run_times.join('\n') + '\n');
+            longFolder.file('file_names.txt', longResult.file_names.join('\n') + '\n');
+            
+            const shortFolder = zip.folder('geom-output/short-sequence');
+            shortFolder.file('dump_times.txt', shortResult.dump_times.join('\n') + '\n');
+            shortFolder.file('run_times.txt', shortResult.run_times.join('\n') + '\n');
+            shortFolder.file('file_names.txt', shortResult.file_names.join('\n') + '\n');
+            
+            zip.generateAsync({ type: 'blob' }).then(content => {
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(content);
+                link.download = 'geom-output.zip';
+                link.click();
+            });
+        }
+        
+        function downloadStitched() {
+            if (!longResult || !shortResult) return;
+            const zip = new JSZip();
+            const folder = zip.folder('stitched-geom-output');
+            
+            folder.file('stitched_dump_times.txt', [...longResult.dump_times, ...shortResult.dump_times].join('\n') + '\n');
+            folder.file('stitched_run_times.txt', [...longResult.run_times, ...shortResult.run_times].join('\n') + '\n');
+            folder.file('stitched_file_names.txt', [...longResult.file_names, ...shortResult.file_names].join('\n') + '\n');
+            
+            zip.generateAsync({ type: 'blob' }).then(content => {
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(content);
+                link.download = 'stitched-geom-output.zip';
+                link.click();
+            });
+        }
+        
+        // ============================================================
+        // ECHARTS VISUALIZATION
+        // ============================================================
+        
+        function getChartTheme() {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            return {
+                backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
+                textColor: isDark ? '#e8e8e8' : '#222222',
+                lineColor: isDark ? '#3d3d3d' : '#dddddd',
+                longColor: '#2563eb',
+                shortColor: '#dc2626',
+                seqColor: '#374151',
+                greenColor: '#16a34a'
+            };
+        }
+        
+        function updateChartsTheme() {
+            if (longResult && shortResult) {
+                updateDumpPlot();
+                updateRunPlot();
+                updateShortPlot();
+            }
+        }
+        
+        function updateDumpPlot() {
+            if (!longResult || !shortResult) return;
+            
+            const theme = getChartTheme();
+            const isLog = document.querySelector('input[name="dump-scale"]:checked').value === 'log';
+            
+            document.getElementById('dump-note').style.display = isLog ? 'block' : 'none';
+            
+            if (!dumpChart) {
+                dumpChart = echarts.init(document.getElementById('plot-dump'));
+                window.addEventListener('resize', () => dumpChart.resize());
+            }
+            
+            const option = {
+                backgroundColor: theme.backgroundColor,
+                grid: { left: 60, right: 30, top: 20, bottom: 80 },
+                xAxis: {
+                    type: isLog ? 'log' : 'value',
+                    name: 'Timesteps' + (isLog ? ' (log)' : ''),
+                    nameLocation: 'middle',
+                    nameGap: 30,
+                    axisLine: { lineStyle: { color: theme.lineColor } },
+                    axisLabel: { color: theme.textColor },
+                    nameTextStyle: { color: theme.textColor }
+                },
+                yAxis: {
+                    type: 'value',
+                    min: 0, max: 1,
+                    show: false
+                },
+                dataZoom: [
+                    { type: 'inside', xAxisIndex: 0 },
+                    { type: 'slider', xAxisIndex: 0, bottom: 5 }
+                ],
+                series: [
+                    {
+                        name: 'Long',
+                        type: 'bar',
+                        data: longResult.dump_times.map(t => [t, 1]),
+                        barWidth: 1,
+                        itemStyle: { color: theme.longColor }
+                    },
+                    {
+                        name: 'Short',
+                        type: 'bar',
+                        data: shortResult.dump_times.map(t => [t, 1]),
+                        barWidth: 1,
+                        itemStyle: { color: theme.shortColor }
+                    }
+                ]
+            };
+            
+            dumpChart.setOption(option, true);
+        }
+        
+        function updateRunPlot() {
+            if (!longResult || !shortResult) return;
+            
+            const theme = getChartTheme();
+            
+            if (!runChart) {
+                runChart = echarts.init(document.getElementById('plot-run'));
+                window.addEventListener('resize', () => runChart.resize());
+            }
+            
+            const longData = longResult.run_times.map((v, i) => [i, v]);
+            const shortData = shortResult.run_times.map((v, i) => [i + longResult.run_times.length, v]);
+            
+            const option = {
+                backgroundColor: theme.backgroundColor,
+                grid: { left: 70, right: 30, top: 20, bottom: 80 },
+                xAxis: {
+                    type: 'value',
+                    name: 'Dump Index',
+                    nameLocation: 'middle',
+                    nameGap: 30,
+                    axisLine: { lineStyle: { color: theme.lineColor } },
+                    axisLabel: { color: theme.textColor },
+                    nameTextStyle: { color: theme.textColor }
+                },
+                yAxis: {
+                    type: 'log',
+                    name: 'Run Time',
+                    axisLine: { lineStyle: { color: theme.lineColor } },
+                    axisLabel: { color: theme.textColor },
+                    nameTextStyle: { color: theme.textColor },
+                    splitLine: { lineStyle: { color: theme.lineColor } }
+                },
+                dataZoom: [
+                    { type: 'inside', xAxisIndex: 0 },
+                    { type: 'slider', xAxisIndex: 0, bottom: 5 }
+                ],
+                series: [
+                    {
+                        name: 'Long',
+                        type: 'line',
+                        data: longData,
+                        areaStyle: { color: 'rgba(37, 99, 235, 0.3)' },
+                        lineStyle: { color: theme.longColor, width: 1 },
+                        symbol: 'none'
+                    },
+                    {
+                        name: 'Short',
+                        type: 'line',
+                        data: shortData,
+                        areaStyle: { color: 'rgba(220, 38, 38, 0.3)' },
+                        lineStyle: { color: theme.shortColor, width: 1 },
+                        symbol: 'none'
+                    }
+                ],
+                markLine: {
+                    data: [{ xAxis: longResult.run_times.length }],
+                    lineStyle: { color: theme.textColor, type: 'dashed' }
+                }
+            };
+            
+            runChart.setOption(option, true);
+        }
+        
+        function findShortSequences(result, count) {
+            const sequences = [];
+            let start = 0;
+            for (let i = 1; i < result.run_times.length; i++) {
+                if (result.run_times[i] < result.run_times[i - 1] * 0.5) {
+                    sequences.push(result.dump_times.slice(start, i));
+                    start = i;
+                    if (sequences.length >= count) break;
+                }
+            }
+            if (sequences.length < count && start < result.dump_times.length) {
+                sequences.push(result.dump_times.slice(start));
+            }
+            return sequences;
+        }
+        
+        function updateShortPlot() {
+            if (!longResult || !shortResult) return;
+            
+            const theme = getChartTheme();
+            const isLog = document.querySelector('input[name="short-scale"]:checked').value === 'log';
+            const dt = parseFloat(document.getElementById('dt').value);
+            const tau_alpha = parseFloat(document.getElementById('tau_alpha').value);
+            
+            const sequences = findShortSequences(shortResult, 2);
+            document.getElementById('seq-info').textContent = sequences.length > 0 ? sequences[0].length : '--';
+            
+            if (!shortChart) {
+                shortChart = echarts.init(document.getElementById('plot-short'));
+                window.addEventListener('resize', () => shortChart.resize());
+            }
+            
+            if (sequences.length < 2) {
+                shortChart.setOption({ series: [] }, true);
+                return;
+            }
+            
+            // Convert to relative LJ times
+            const seq1 = sequences[0].map(t => (t - sequences[0][0]) * dt);
+            const seq2 = sequences[1].map(t => (t - sequences[1][0]) * dt);
+            const seq1Duration = seq1[seq1.length - 1];
+            const gap = 0.5;
+            const seq2Shifted = seq2.map(t => t + seq1Duration + gap);
+            
+            let allData1 = seq1.map(t => [t, 1]);
+            let allData2 = seq2Shifted.map(t => [t, 1]);
+            
+            if (isLog) {
+                allData1 = allData1.filter(d => d[0] > 0);
+                allData2 = allData2.filter(d => d[0] > 0);
+            }
+            
+            const option = {
+                backgroundColor: theme.backgroundColor,
+                grid: { left: 60, right: 30, top: 30, bottom: 80 },
+                xAxis: {
+                    type: isLog ? 'log' : 'value',
+                    name: 'Time (LJ)' + (isLog ? ' - log' : ''),
+                    nameLocation: 'middle',
+                    nameGap: 30,
+                    axisLine: { lineStyle: { color: theme.lineColor } },
+                    axisLabel: { color: theme.textColor },
+                    nameTextStyle: { color: theme.textColor }
+                },
+                yAxis: { type: 'value', min: 0, max: 1, show: false },
+                dataZoom: [
+                    { type: 'inside', xAxisIndex: 0 },
+                    { type: 'slider', xAxisIndex: 0, bottom: 5 }
+                ],
+                series: [
+                    {
+                        type: 'bar',
+                        data: allData1,
+                        barWidth: 1,
+                        itemStyle: { color: theme.seqColor },
+                        markLine: {
+                            silent: true,
+                            symbol: 'none',
+                            data: [
+                                { xAxis: tau_alpha, lineStyle: { color: theme.greenColor, width: 2, type: 'solid' } },
+                                { xAxis: seq1Duration + gap + tau_alpha, lineStyle: { color: theme.greenColor, width: 2, type: 'solid' } }
+                            ],
+                            label: { show: false }
+                        }
+                    },
+                    {
+                        type: 'bar',
+                        data: allData2,
+                        barWidth: 1,
+                        itemStyle: { color: theme.seqColor }
+                    }
+                ]
+            };
+            
+            shortChart.setOption(option, true);
+        }
+        
+        // ============================================================
+        // INIT
+        // ============================================================
+        
+        window.onload = function() {
+            loadTheme();
+            loadParams();
+            
+            // Render math after a short delay
+            setTimeout(renderMath, 500);
+        };
+    </script>
+</body>
+</html>
