@@ -1,8 +1,4 @@
 [build]
   publish = "."
-  command = ""
-
-# Skip any dependency installation
-[build.environment]
-  NODE_VERSION = "18"
+  command = "echo 'Static site - no build needed'"
 
