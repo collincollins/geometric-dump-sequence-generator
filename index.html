@@ -893,7 +893,7 @@
                     <ul>
                         <li>Linearly-spaced dumps at high resolution generate impractical amounts of data</li>
                         <li>Low-resolution linear dumps miss fast dynamics entirely</li>
-                        <li>Example (low temperature): Capturing 8 decades of time (10<sup>0</sup> to 10<sup>8</sup> timesteps) at high resolution would require ~10<sup>8</sup> frames. With 100,000 particles at ~12 bytes/particle/frame, that's ~120 TB per run. For 5 independent runs (statistical significance), you'd need ~600 TB of storage—and that's just for one temperature!</li>
+                        <li>Example (low temperature): Capturing 8 decades of time (10<sup>0</sup> to 10<sup>8</sup> timesteps) at high resolution would require ~10<sup>8</sup> frames. With 100,000 particles at ~12 bytes/particle/frame, that's ~120 TB per run. For 5 independent runs (statistical significance), you'd need ~600 TB of storage, and that's just for one temperature!</li>
                     </ul>
                     
                     <p><strong>The Geometric Solution</strong></p>
@@ -903,7 +903,7 @@
                         <li>Lower density at long times → captures slow dynamics efficiently</li>
                         <li>Uniform coverage on a log-time axis</li>
                         <li>Typically ~9,000 dumps to span 8 decades with repeated sequences</li>
-                        <li>Example (low temperature): Using ~9,000 dumps: 9,000 × 1.2 MB ≈ 11 GB per run, or ~55 GB for 5 runs—roughly <strong>11,000× less storage</strong> than linear dumping!</li>
+                        <li>Example (low temperature): Using ~9,000 dumps: 9,000 × 1.2 MB ≈ 11 GB per run, or ~55 GB for 5 runs. That's about <strong>11,000× less storage</strong> than linear dumping!</li>
                     </ul>
                     
                     <p><strong>Repeated Geometric Sequence Approach</strong></p>
