@@ -706,6 +706,26 @@
                         Total duration of all short sequences combined. Defaults to <code>100*tau_alpha</code>. This determines how long after equilibration you continue recording. Divided by the short sequence length to get the number of repeats.
                     </div>
                 </div>
+                <div class="param-group">
+                    <div class="param-label">
+                        long_sequence_filename
+                        <span class="help-icon" onclick="toggleHelp(this)">?</span>
+                    </div>
+                    <input type="text" id="long_filename_pattern" value="short<n>.dcd" placeholder="short<n>.dcd">
+                    <div class="help-content">
+                        Filename pattern for long sequence trajectory files. Use <code>&lt;n&gt;</code> as placeholder for the file number. Examples: <code>short&lt;n&gt;.dcd</code>, <code>equil_&lt;n&gt;.dcd</code>, <code>traj_long_&lt;n&gt;.dcd</code>
+                    </div>
+                </div>
+                <div class="param-group">
+                    <div class="param-label">
+                        short_sequence_filename
+                        <span class="help-icon" onclick="toggleHelp(this)">?</span>
+                    </div>
+                    <input type="text" id="short_filename_pattern" value="short<n>.dcd" placeholder="short<n>.dcd">
+                    <div class="help-content">
+                        Filename pattern for short sequence trajectory files. Use <code>&lt;n&gt;</code> as placeholder for the file number. Examples: <code>short&lt;n&gt;.dcd</code>, <code>prod_&lt;n&gt;.dcd</code>, <code>traj_short_&lt;n&gt;.dcd</code>
+                    </div>
+                </div>
             </div>
             
             <!-- Advanced Settings -->
@@ -763,7 +783,7 @@
         <div class="section" id="checks-section">
             <h2>Reality Checks</h2>
             <div class="reality-checks" id="reality-checks">
-                <div class="check-item pending"><span class="check-icon">-</span> Long sequence first filename index == 1</div>
+                <div class="check-item pending"><span class="check-icon">-</span> Long sequence first filename correct</div>
                 <div class="check-item pending"><span class="check-icon">-</span> Long sequence first dump_time == 1</div>
                 <div class="check-item pending"><span class="check-icon">-</span> Long sequence first run_time == 1</div>
                 <div class="check-item pending"><span class="check-icon">-</span> Short sequence first dump_time == long_last + 1</div>
@@ -959,6 +979,8 @@
             dumps_per_short: 27,
             length_short: '',
             num_particles: 100000,
+            long_filename_pattern: 'short<n>.dcd',
+            short_filename_pattern: 'short<n>.dcd',
             theme: 'light'
         };
         
@@ -1024,7 +1046,9 @@
                 total_time_short: document.getElementById('total_time_short').value.trim(),
                 dumps_per_short: parseInt(document.getElementById('dumps_per_short').value) || defaults.dumps_per_short,
                 length_short: document.getElementById('length_short').value.trim(),
-                num_particles: parseInt(document.getElementById('num_particles').value) || defaults.num_particles
+                num_particles: parseInt(document.getElementById('num_particles').value) || defaults.num_particles,
+                long_filename_pattern: document.getElementById('long_filename_pattern').value.trim() || defaults.long_filename_pattern,
+                short_filename_pattern: document.getElementById('short_filename_pattern').value.trim() || defaults.short_filename_pattern
             };
             localStorage.setItem(STORAGE_KEY, JSON.stringify(params));
         }
@@ -1040,6 +1064,8 @@
             document.getElementById('dumps_per_short').value = params.dumps_per_short !== undefined ? params.dumps_per_short : defaults.dumps_per_short;
             document.getElementById('length_short').value = params.length_short || '';
             document.getElementById('num_particles').value = params.num_particles !== undefined ? params.num_particles : defaults.num_particles;
+            document.getElementById('long_filename_pattern').value = params.long_filename_pattern || defaults.long_filename_pattern;
+            document.getElementById('short_filename_pattern').value = params.short_filename_pattern || defaults.short_filename_pattern;
         }
         
         function resetParams() {
@@ -1119,7 +1145,13 @@
         // SEQUENCE GENERATION ALGORITHMS
         // ============================================================
         
-        function generateLongSequence(a_lj, t_lj, n_goal, dt, c_start, m_start) {
+        // Helper function to apply filename pattern
+        function applyFilenamePattern(pattern, n) {
+            return pattern.replace('<n>', n);
+        }
+        
+        function generateLongSequence(a_lj, t_lj, n_goal, dt, c_start, m_start, filenamePattern) {
+            filenamePattern = filenamePattern || 'short<n>.dcd';
             let t_start = (a_lj / dt) < 1 ? 1 : Math.round(a_lj / dt);
             const timespan = t_lj / dt;
             const r = Math.pow(timespan / t_start, 1 / (n_goal - 1));
@@ -1136,13 +1168,14 @@
                     term_counter++;
                     results.dump_times.push(meta_tally + timestep);
                     results.run_times.push(runtime);
-                    results.file_names.push('short' + term_counter + '.dcd');
+                    results.file_names.push(applyFilenamePattern(filenamePattern, term_counter));
                 }
             }
             return results;
         }
         
-        function generateShortSequence(a_lj, t_lj, n_goal, dt, c_start, m_start, repeats) {
+        function generateShortSequence(a_lj, t_lj, n_goal, dt, c_start, m_start, repeats, filenamePattern) {
+            filenamePattern = filenamePattern || 'short<n>.dcd';
             let t_start = (a_lj / dt) < 1 ? 1 : Math.round(a_lj / dt);
             const timespan = t_lj / dt;
             const r = Math.pow(timespan / t_start, 1 / (n_goal - 1));
@@ -1161,7 +1194,7 @@
                         term_counter++;
                         results.dump_times.push(meta_tally + timestep);
                         results.run_times.push(runtime);
-                        results.file_names.push('short' + term_counter + '.dcd');
+                        results.file_names.push(applyFilenamePattern(filenamePattern, term_counter));
                     }
                 }
                 meta_tally += timestep;
@@ -1175,8 +1208,9 @@
             
             let bestN = 50, bestDiff = Infinity;
             // Search all integers from 50 to 10000
+            // Use c=1, m=0 to account for LAMMPS t=0 dump taking first filename
             for (let n = 50; n <= 10000; n++) {
-                const result = generateLongSequence(0, t_lj, n, dt, 0, 0);
+                const result = generateLongSequence(0, t_lj, n, dt, 1, 0);
                 if (result.dump_times.length === 0) continue;
                 const lastDump = result.dump_times[result.dump_times.length - 1];
                 const diff = Math.abs(lastDump - target);
@@ -1223,18 +1257,24 @@
             let length_short = evaluateExpression(document.getElementById('length_short').value, tau_alpha, tau_equil);
             if (isNaN(length_short) || length_short <= 0) length_short = 0.90 * tau_alpha;
             
+            // Get filename patterns
+            const longFilenamePattern = document.getElementById('long_filename_pattern').value.trim() || defaults.long_filename_pattern;
+            const shortFilenamePattern = document.getElementById('short_filename_pattern').value.trim() || defaults.short_filename_pattern;
+            
             // Find optimal n
             const optimal_n = findOptimalN(tau_alpha, total_time_long, dt);
             
             // Long sequence params
+            // Start at c=1 because LAMMPS t=0 dump takes first filename (e.g., short1.dcd)
+            // Keep m=0 so dump_time starts at 1
             const long_a = 0;
             const long_t = tau_alpha / 2;
             const long_n = optimal_n;
-            const long_c = 0;
-            const long_m = 0;
+            const long_c = 1;  // Start file counter at 1 (first file index = 2)
+            const long_m = 0;  // Start at timestep 0 (first dump_time = 1)
             const long_r = 1;
             
-            longResult = generateLongSequence(long_a, long_t, long_n, dt, long_c, long_m);
+            longResult = generateLongSequence(long_a, long_t, long_n, dt, long_c, long_m, longFilenamePattern);
             
             // Short sequence params
             const long_last_dump = longResult.dump_times[longResult.dump_times.length - 1];
@@ -1243,11 +1283,11 @@
             const short_a = dt;
             const short_t = length_short;
             const short_n = dumps_per_short;
-            const short_c = long_count;
+            const short_c = long_count + 1;  // Continue from long sequence, +1 for LAMMPS t=0 dump
             const short_m = long_last_dump;
             const short_r = Math.round(total_time_short / length_short);
             
-            shortResult = generateShortSequence(short_a, short_t, short_n, dt, short_c, short_m, short_r);
+            shortResult = generateShortSequence(short_a, short_t, short_n, dt, short_c, short_m, short_r, shortFilenamePattern);
             
             // Update commands
             document.getElementById('long-command').textContent = 
@@ -1261,10 +1301,10 @@
                 <div class="param-line"><span class="param-name">-t ${long_t}</span> tau_alpha/2 = ${tau_alpha}/2 = ${long_t} LJ (controls geometric ratio)</div>
                 <div class="param-line"><span class="param-name">-n ${long_n}</span> Auto-selected to get final dump closest to ${total_time_long} LJ</div>
                 <div class="param-line"><span class="param-name">-d ${dt}</span> Simulation timestep</div>
-                <div class="param-line"><span class="param-name">-c ${long_c}</span> File counter starts at 0 (first file = short1.dcd)</div>
+                <div class="param-line"><span class="param-name">-c ${long_c}</span> File counter starts at 1 (first file = ${applyFilenamePattern(longFilenamePattern, 2)}, since LAMMPS t=0 dump uses ${applyFilenamePattern(longFilenamePattern, 1)})</div>
                 <div class="param-line"><span class="param-name">--small</span> Simple geometric series mode</div>
                 <div class="param-line"><span class="param-name">-r ${long_r}</span> Single sequence (no repeats)</div>
-                <div class="param-line"><span class="param-name">-m ${long_m}</span> Start at timestep 0</div>
+                <div class="param-line"><span class="param-name">-m ${long_m}</span> Start at timestep 0 (first dump_time = 1)</div>
             `;
             const total_time_short_input = document.getElementById('total_time_short').value.trim() || '100*tau_alpha';
             document.getElementById('short-explanation').innerHTML = `
@@ -1278,7 +1318,7 @@
                 <div class="param-line"><span class="param-name">-m ${short_m}</span> Start at timestep ${long_last_dump} (end of long seq)</div>
             `;
             
-            runRealityChecks(dt, tau_equil, tau_alpha, total_time_short);
+            runRealityChecks(dt, tau_equil, tau_alpha, total_time_short, longFilenamePattern, shortFilenamePattern);
             updateSummary(dt);
             
             document.getElementById('btn-individual').disabled = false;
@@ -1295,15 +1335,17 @@
         // REALITY CHECKS
         // ============================================================
         
-        function runRealityChecks(dt, tau_equil, tau_alpha, total_time_short) {
+        function runRealityChecks(dt, tau_equil, tau_alpha, total_time_short, longFilenamePattern, shortFilenamePattern) {
+            const expectedLongFirst = applyFilenamePattern(longFilenamePattern, 2);
+            const expectedShortFirst = applyFilenamePattern(shortFilenamePattern, longResult.dump_times.length + 2);
             const checks = [
-                { name: 'Long sequence first filename index == 1', pass: longResult.file_names[0] === 'short1.dcd' },
+                { name: `Long sequence first filename == ${expectedLongFirst}`, pass: longResult.file_names[0] === expectedLongFirst },
                 { name: 'Long sequence first dump_time == 1', pass: longResult.dump_times[0] === 1 },
                 { name: 'Long sequence first run_time == 1', pass: longResult.run_times[0] === 1 },
                 { name: 'Short sequence first dump_time == long_last + 1', 
                   pass: shortResult.dump_times[0] === longResult.dump_times[longResult.dump_times.length - 1] + 1 },
-                { name: 'Short sequence first filename == long_count + 1', 
-                  pass: shortResult.file_names[0] === 'short' + (longResult.dump_times.length + 1) + '.dcd' },
+                { name: `Short sequence first filename == ${expectedShortFirst}`, 
+                  pass: shortResult.file_names[0] === expectedShortFirst },
                 { name: 'Short sequence last dump within 1% of target', 
                   pass: Math.abs(shortResult.dump_times[shortResult.dump_times.length - 1] - (tau_equil + total_time_short) / dt) <= 0.01 * (tau_equil + total_time_short) / dt }
             ];
