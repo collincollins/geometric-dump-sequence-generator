@@ -810,8 +810,8 @@
                 <strong>Note:</strong> This estimates the size of trajectory files (.dcd) that LAMMPS will generate during your simulation - NOT the download buttons below.
                 <ul style="margin-left: 20px; margin-top: 8px;">
                     <li>DCD format: 12 bytes per particle per frame (3 floats x 4 bytes for x, y, z)</li>
-                    <li>~100 bytes header overhead per frame</li>
-                    <li>Formula: size = (12 * particles + 100) * frames</li>
+                    <li>~100 bytes header overhead per file</li>
+                    <li>Formula: size = (12 * particles * frames) + 100</li>
                 </ul>
             </div>
             
@@ -1392,10 +1392,11 @@
             if (!longResult || !shortResult) return;
             
             const numParticles = parseInt(document.getElementById('num_particles').value) || 100000;
-            const bytesPerFrame = 12 * numParticles + 100;
+            const bytesPerFrame = 12 * numParticles;
+            const headerBytes = 100; // per file, not per frame
             
-            const longSizeGB = (bytesPerFrame * longResult.dump_times.length) / (1024 ** 3);
-            const shortSizeGB = (bytesPerFrame * shortResult.dump_times.length) / (1024 ** 3);
+            const longSizeGB = (bytesPerFrame * longResult.dump_times.length + headerBytes) / (1024 ** 3);
+            const shortSizeGB = (bytesPerFrame * shortResult.dump_times.length + headerBytes) / (1024 ** 3);
             
             document.getElementById('long-size').textContent = formatSize(longSizeGB);
             document.getElementById('short-size').textContent = formatSize(shortSizeGB);
