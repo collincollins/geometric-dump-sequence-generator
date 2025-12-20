@@ -1407,24 +1407,29 @@
         // DOWNLOADS
         // ============================================================
         
+        // Format number as integer string (avoids scientific notation for large numbers)
+        function formatInt(n) {
+            return Math.round(n).toLocaleString('en-US', { useGrouping: false, maximumFractionDigits: 0 });
+        }
+        
         function downloadIndividual() {
             if (!longResult || !shortResult) return;
             const zip = new JSZip();
             
-            // Explicitly set binary: false to ensure text encoding
-            const textOptions = { binary: false };
+            // Use Windows line endings for compatibility
+            const eol = '\r\n';
             
             const longFolder = zip.folder('geom-output/long-sequence');
-            longFolder.file('dump_times.txt', longResult.dump_times.join('\n') + '\n', textOptions);
-            longFolder.file('run_times.txt', longResult.run_times.join('\n') + '\n', textOptions);
-            longFolder.file('file_names.txt', longResult.file_names.join('\n') + '\n', textOptions);
+            longFolder.file('dump_times.txt', longResult.dump_times.map(formatInt).join(eol) + eol);
+            longFolder.file('run_times.txt', longResult.run_times.map(formatInt).join(eol) + eol);
+            longFolder.file('file_names.txt', longResult.file_names.join(eol) + eol);
             
             const shortFolder = zip.folder('geom-output/short-sequence');
-            shortFolder.file('dump_times.txt', shortResult.dump_times.join('\n') + '\n', textOptions);
-            shortFolder.file('run_times.txt', shortResult.run_times.join('\n') + '\n', textOptions);
-            shortFolder.file('file_names.txt', shortResult.file_names.join('\n') + '\n', textOptions);
+            shortFolder.file('dump_times.txt', shortResult.dump_times.map(formatInt).join(eol) + eol);
+            shortFolder.file('run_times.txt', shortResult.run_times.map(formatInt).join(eol) + eol);
+            shortFolder.file('file_names.txt', shortResult.file_names.join(eol) + eol);
             
-            zip.generateAsync({ type: 'blob' }).then(content => {
+            zip.generateAsync({ type: 'blob', mimeType: 'application/zip' }).then(content => {
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(content);
                 link.download = 'geom-output.zip';
@@ -1437,13 +1442,13 @@
             const zip = new JSZip();
             const folder = zip.folder('stitched-geom-output');
             
-            // Explicitly set binary: false to ensure text encoding
-            const textOptions = { binary: false };
-            folder.file('stitched_dump_times.txt', [...longResult.dump_times, ...shortResult.dump_times].join('\n') + '\n', textOptions);
-            folder.file('stitched_run_times.txt', [...longResult.run_times, ...shortResult.run_times].join('\n') + '\n', textOptions);
-            folder.file('stitched_file_names.txt', [...longResult.file_names, ...shortResult.file_names].join('\n') + '\n', textOptions);
+            // Use Windows line endings for compatibility
+            const eol = '\r\n';
+            folder.file('stitched_dump_times.txt', [...longResult.dump_times, ...shortResult.dump_times].map(formatInt).join(eol) + eol);
+            folder.file('stitched_run_times.txt', [...longResult.run_times, ...shortResult.run_times].map(formatInt).join(eol) + eol);
+            folder.file('stitched_file_names.txt', [...longResult.file_names, ...shortResult.file_names].join(eol) + eol);
             
-            zip.generateAsync({ type: 'blob' }).then(content => {
+            zip.generateAsync({ type: 'blob', mimeType: 'application/zip' }).then(content => {
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(content);
                 link.download = 'stitched-geom-output.zip';
