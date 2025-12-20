@@ -1411,15 +1411,18 @@
             if (!longResult || !shortResult) return;
             const zip = new JSZip();
             
+            // Explicitly set binary: false to ensure text encoding
+            const textOptions = { binary: false };
+            
             const longFolder = zip.folder('geom-output/long-sequence');
-            longFolder.file('dump_times.txt', longResult.dump_times.join('\n') + '\n');
-            longFolder.file('run_times.txt', longResult.run_times.join('\n') + '\n');
-            longFolder.file('file_names.txt', longResult.file_names.join('\n') + '\n');
+            longFolder.file('dump_times.txt', longResult.dump_times.join('\n') + '\n', textOptions);
+            longFolder.file('run_times.txt', longResult.run_times.join('\n') + '\n', textOptions);
+            longFolder.file('file_names.txt', longResult.file_names.join('\n') + '\n', textOptions);
             
             const shortFolder = zip.folder('geom-output/short-sequence');
-            shortFolder.file('dump_times.txt', shortResult.dump_times.join('\n') + '\n');
-            shortFolder.file('run_times.txt', shortResult.run_times.join('\n') + '\n');
-            shortFolder.file('file_names.txt', shortResult.file_names.join('\n') + '\n');
+            shortFolder.file('dump_times.txt', shortResult.dump_times.join('\n') + '\n', textOptions);
+            shortFolder.file('run_times.txt', shortResult.run_times.join('\n') + '\n', textOptions);
+            shortFolder.file('file_names.txt', shortResult.file_names.join('\n') + '\n', textOptions);
             
             zip.generateAsync({ type: 'blob' }).then(content => {
                 const link = document.createElement('a');
@@ -1434,9 +1437,11 @@
             const zip = new JSZip();
             const folder = zip.folder('stitched-geom-output');
             
-            folder.file('stitched_dump_times.txt', [...longResult.dump_times, ...shortResult.dump_times].join('\n') + '\n');
-            folder.file('stitched_run_times.txt', [...longResult.run_times, ...shortResult.run_times].join('\n') + '\n');
-            folder.file('stitched_file_names.txt', [...longResult.file_names, ...shortResult.file_names].join('\n') + '\n');
+            // Explicitly set binary: false to ensure text encoding
+            const textOptions = { binary: false };
+            folder.file('stitched_dump_times.txt', [...longResult.dump_times, ...shortResult.dump_times].join('\n') + '\n', textOptions);
+            folder.file('stitched_run_times.txt', [...longResult.run_times, ...shortResult.run_times].join('\n') + '\n', textOptions);
+            folder.file('stitched_file_names.txt', [...longResult.file_names, ...shortResult.file_names].join('\n') + '\n', textOptions);
             
             zip.generateAsync({ type: 'blob' }).then(content => {
                 const link = document.createElement('a');
